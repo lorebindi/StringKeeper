@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import sys,socket,os, struct, argparse
+
+# valori di default verso cui connettersi 
+HOST = "127.0.0.1"  # The server's hostname or IP address
+PORT = 57308        # The port used by the server
+Max_sequence_length = 2048
+
+
+# Creazione del socket per la connesssione al server.
+def main(filename):
+  file = open(filename, "r")
+  lis = file.readlines()
+  file.close()
+  while(len(lis) > 0):
+    # Prendo la prima riga
+    line = lis.pop(0)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+        # Invio tipo di connessione
+        type = 'A'
+        s.sendall(type.encode())
+        assert(len(line)<=Max_sequence_length), "Stringa letta dal file troppo grande"
+        # Invio della lunghezza della stringa espressa in byte.
+        s.sendall(struct.pack("!i", len(line)))
+        # Invio della stringa
+        s.sendall(line.encode())
+        # Chiusura della connessione
+        s.shutdown(socket.SHUT_RDWR)
+  
+  return
+
+# invoca il main con il filename passato sulla linea di comando
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+  parser.add_argument('filename', help="Nome file dal quale il client deve leggere le stringhe", type = str) 
+  args = parser.parse_args()
+  assert len(args.filename) > 0, "Il filename deve avere una lunghezza maggiore di 0"
+  main(args.filename)
+ 

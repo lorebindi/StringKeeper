@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+
+import socket, struct, argparse
+import concurrent.futures
+
+# valori di default verso cui connettersi 
+HOST = "127.0.0.1"  # The server's hostname or IP address
+PORT = 57308        # The port used by the server
+Max_sequence_length = 2048
+
+# Apre il file e invia tutte le righe al server con un unica connessione
+def tbody(filename):
+  file = open(filename, 'r')
+  lis = file.readlines()
+  #print(lis)
+  file.close()
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    # Invio tipo di connessione
+    type = "B"
+    s.sendall(type.encode())
+    # While che scorre tutte le linee del file
+    while(len(lis)>0):
+      line = lis.pop(0)
+      assert(len(line)<=Max_sequence_length), "Stringa letta dal file troppo grande"
+      # Invio lunghezza della stringa e la stringa.
+      s.sendall(struct.pack("!i", len(line)) + line.encode())
+    #Invio sequenza di lunghezza 0
+    s.sendall(struct.pack("!i", 0))
+  # Chiusura della connessione
+  s.shutdown(socket.SHUT_RDWR)  
+  return
+
+
+def main(filenames):
+  assert len(filenames) > 0, "Il numero di file deve essere almeno 1."
+  with concurrent.futures.ThreadPoolExecutor(max_workers=len(filenames)) as executor:
+    for file in filenames:
+      executor.submit(tbody, file)
+  return
+
+# invoca il main con i filename passati sulla linea di comando
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+  parser.add_argument('filenames', nargs='*',help="Nome dei file file dal quale il client deve leggere le stringhe", type = str) 
+  args = parser.parse_args()
+  assert len(args.filenames) > 0, "Il filename deve avere una lunghezza maggiore di 0"
+  main(args.filenames)
+
